@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="EduFlow Teacher favicon">
+  <defs>
+    <linearGradient id="teacher-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7c2d12" />
+      <stop offset="100%" stop-color="#f97316" />
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="url(#teacher-bg)" />
+  <path d="M14 20c7 0 12 1.5 18 5.5V47c-6-4-11-5.5-18-5.5V20z" fill="#fff7ed" />
+  <path d="M50 20c-7 0-12 1.5-18 5.5V47c6-4 11-5.5 18-5.5V20z" fill="#ffedd5" />
+  <path d="M32 24v22" stroke="#fb923c" stroke-width="2" />
+  <path d="M19 28h8M19 34h8M37 28h8M37 34h8" stroke="#ea580c" stroke-width="2" stroke-linecap="round" />
+</svg>

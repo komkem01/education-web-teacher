@@ -22,7 +22,7 @@
         </div>
         <select v-model="filterStatus" class="filter-select">
           <option value="">สถานะทั้งหมด</option>
-          <option value="ร้องขอ">ร้องขอ</option>
+          <option value="รออนุมัติ">รออนุมัติ</option>
           <option value="กำลังดำเนินการ">กำลังดำเนินการ</option>
           <option value="พร้อมรับ">พร้อมรับ</option>
           <option value="รับแล้ว">รับแล้ว</option>
@@ -39,7 +39,7 @@
           <div class="actions">
             <NuxtLink :to="`/teacher/documents/${row.id}`" class="btn-detail">รายละเอียด</NuxtLink>
             <button
-              v-if="row.status === 'ร้องขอ'"
+              v-if="row.status === 'รออนุมัติ'"
               type="button"
               class="btn-delete"
               @click="openCancelModal(row.id)"
@@ -115,7 +115,7 @@
     </TeacherAppModal>
 
     <TeacherAppModal v-model="showRestoreModal" title="ยืนยันการกู้คืนคำขอ" size="sm" confirm-label="ยืนยันกู้คืน" @confirm="confirmRestore">
-      <div class="confirm-text">ต้องการกู้คืนคำขอนี้กลับไปเป็นสถานะร้องขอใช่หรือไม่</div>
+      <div class="confirm-text">ต้องการกู้คืนคำขอนี้กลับไปเป็นสถานะรออนุมัติใช่หรือไม่</div>
       <div class="confirm-box">
         <div class="confirm-item"><span>รหัสคำขอ</span><strong>{{ restoreTargetId || '-' }}</strong></div>
       </div>
@@ -204,7 +204,7 @@ function confirmCreate() {
     type: form.value.type,
     detail: detailParts.join(' | '),
     requestedAt: new Date().toLocaleDateString('th-TH'),
-    status: 'ร้องขอ',
+    status: 'รออนุมัติ',
     canceledByRequester: false,
     note: '',
   })
@@ -220,7 +220,7 @@ function openCancelModal(id: string) {
 
 function confirmCancel() {
   const target = requests.value.find(r => r.id === cancelTargetId.value)
-  if (!target || target.status !== 'ร้องขอ') {
+  if (!target || target.status !== 'รออนุมัติ') {
     showCancelModal.value = false
     cancelTargetId.value = ''
     return
@@ -249,7 +249,7 @@ function confirmRestore() {
     restoreTargetId.value = ''
     return
   }
-  target.status = 'ร้องขอ'
+  target.status = 'รออนุมัติ'
   target.canceledByRequester = false
   target.note = ''
   showRestoreModal.value = false

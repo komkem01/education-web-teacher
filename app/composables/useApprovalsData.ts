@@ -8,7 +8,7 @@ export interface ApprovalRequest {
   changeSummary?: string
   reason?: string
   submittedAt: string
-  status: 'รอดำเนินการ' | 'อนุมัติแล้ว' | 'ปฏิเสธ' | 'ยกเลิกแล้ว'
+  status: 'รออนุมัติ' | 'อนุมัติแล้ว' | 'ปฏิเสธ' | 'ยกเลิกแล้ว'
   approvedBy: string
   priority: 'ด่วนมาก' | 'ด่วน' | 'ปกติ'
   note: string
@@ -24,7 +24,7 @@ export function useApprovalsData() {
       changeSummary: 'ที่อยู่ = 99/21 ม.4 ต.หนองบัว, เบอร์โทรผู้ปกครอง = 089-123-4567',
       reason: 'ข้อมูลเดิมติดต่อไม่ได้',
       submittedAt: '05/03/2568',
-      status: 'รอดำเนินการ',
+      status: 'รออนุมัติ',
       approvedBy: '',
       priority: 'ปกติ',
       note: '',
@@ -37,7 +37,7 @@ export function useApprovalsData() {
       changeSummary: 'คะแนนกลางภาค = 38, คะแนนปลายภาค = 41',
       reason: 'บันทึกคะแนนผิดจากเอกสารต้นทาง',
       submittedAt: '04/03/2568',
-      status: 'รอดำเนินการ',
+      status: 'รออนุมัติ',
       approvedBy: '',
       priority: 'ด่วน',
       note: '',

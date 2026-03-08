@@ -16,7 +16,7 @@
         <div class="header-actions">
           <TeacherStatusBadge :label="record.status" :variant="docStatusVariant(record.status)" />
           <button
-            v-if="record.status === 'ร้องขอ'"
+            v-if="record.status === 'รออนุมัติ'"
             type="button"
             class="btn-delete"
             @click="showCancelModal = true"
@@ -81,7 +81,7 @@
     </TeacherAppModal>
 
     <TeacherAppModal v-model="showRestoreModal" title="ยืนยันการกู้คืนคำขอ" size="sm" confirm-label="ยืนยันกู้คืน" @confirm="restoreRequest">
-      <div class="confirm-text">ต้องการกู้คืนคำขอนี้กลับไปเป็นสถานะร้องขอใช่หรือไม่</div>
+      <div class="confirm-text">ต้องการกู้คืนคำขอนี้กลับไปเป็นสถานะรออนุมัติใช่หรือไม่</div>
       <div class="confirm-box" v-if="record">
         <div class="confirm-item"><span>รหัสคำขอ</span><strong>{{ record.id }}</strong></div>
         <div class="confirm-item"><span>ประเภท</span><strong>{{ record.type }}</strong></div>
@@ -109,7 +109,7 @@ const canRestoreRecord = computed(() =>
   !!record.value && record.value.status === 'ยกเลิกแล้ว' && record.value.canceledByRequester === true,
 )
 
-const statusSteps = ['ร้องขอ', 'กำลังดำเนินการ', 'พร้อมรับ', 'รับแล้ว']
+const statusSteps = ['รออนุมัติ', 'กำลังดำเนินการ', 'พร้อมรับ', 'รับแล้ว']
 
 function currentStepIndex() {
   return statusSteps.indexOf(record.value?.status ?? '')
@@ -126,7 +126,7 @@ function docStatusVariant(s: string) {
 }
 
 function cancelRequest() {
-  if (!record.value || record.value.status !== 'ร้องขอ') {
+  if (!record.value || record.value.status !== 'รออนุมัติ') {
     showCancelModal.value = false
     return
   }
@@ -142,7 +142,7 @@ function restoreRequest() {
     showRestoreModal.value = false
     return
   }
-  record.value.status = 'ร้องขอ'
+  record.value.status = 'รออนุมัติ'
   record.value.canceledByRequester = false
   record.value.note = ''
   showRestoreModal.value = false

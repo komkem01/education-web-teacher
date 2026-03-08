@@ -16,7 +16,7 @@
         <div class="header-actions">
           <TeacherStatusBadge :label="record.status" :variant="statusVariant(record.status)" />
           <button
-            v-if="record.status === 'รอดำเนินการ'"
+            v-if="record.status === 'รออนุมัติ'"
             type="button"
             class="btn-delete"
             @click="showCancelModal = true"
@@ -56,13 +56,13 @@
         </div>
       </div>
 
-      <div v-if="record.status !== 'รอดำเนินการ'" class="detail-card section-gap">
+      <div v-if="record.status !== 'รออนุมัติ'" class="detail-card section-gap">
         <div class="detail-card-title">ผลการพิจารณา</div>
         <div class="detail-row"><span class="dl">อนุมัติโดย</span><span class="dv">{{ record.approvedBy || '-' }}</span></div>
         <div class="detail-row"><span class="dl">หมายเหตุ</span><span class="dv">{{ record.note || '-' }}</span></div>
       </div>
 
-      <div v-if="record.status === 'รอดำเนินการ'" class="info-banner">
+      <div v-if="record.status === 'รออนุมัติ'" class="info-banner">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#d97706" stroke-width="1.3"/><line x1="7" y1="4.5" x2="7" y2="7.5" stroke="#d97706" stroke-width="1.3" stroke-linecap="round"/><circle cx="7" cy="9" r="0.7" fill="#d97706"/></svg>
         คำขอนี้กำลังรอการพิจารณาจากบุคลากร โปรดรอการตอบกลับ
       </div>
@@ -90,7 +90,7 @@
       confirm-label="ยืนยันกู้คืน"
       @confirm="restoreRequest"
     >
-      <div class="confirm-text">ต้องการกู้คืนคำขอนี้กลับไปเป็นรอดำเนินการใช่หรือไม่</div>
+      <div class="confirm-text">ต้องการกู้คืนคำขอนี้กลับไปเป็นรออนุมัติใช่หรือไม่</div>
       <div class="confirm-box" v-if="record">
         <div class="confirm-item"><span>รหัสคำขอ</span><strong>{{ record.id }}</strong></div>
         <div class="confirm-item"><span>ประเภท</span><strong>{{ record.type }}</strong></div>
@@ -127,7 +127,7 @@ function priorityVariant(p: string) {
 }
 
 function cancelRequest() {
-  if (!record.value || record.value.status !== 'รอดำเนินการ') {
+  if (!record.value || record.value.status !== 'รออนุมัติ') {
     showCancelModal.value = false
     return
   }
@@ -143,7 +143,7 @@ function restoreRequest() {
     showRestoreModal.value = false
     return
   }
-  record.value.status = 'รอดำเนินการ'
+  record.value.status = 'รออนุมัติ'
   record.value.note = ''
   record.value.approvedBy = ''
   showFeedback(`กู้คืนคำขอ ${record.value.id} สำเร็จ`)

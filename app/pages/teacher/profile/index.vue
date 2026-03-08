@@ -92,7 +92,7 @@
           <div v-for="req in requestHistory" :key="req.id" class="timeline-item">
             <div class="timeline-row">
               <div class="timeline-title">{{ req.id }} · {{ req.sections }}</div>
-              <TeacherStatusBadge :label="req.status" :variant="req.status === 'รอดำเนินการ' ? 'warning' : req.status === 'อนุมัติแล้ว' ? 'success' : 'danger'" />
+              <TeacherStatusBadge :label="req.status" :variant="req.status === 'รออนุมัติ' ? 'warning' : req.status === 'อนุมัติแล้ว' ? 'success' : 'danger'" />
             </div>
             <div class="timeline-sub">{{ req.submittedAt }} · เหตุผล: {{ req.reason }}</div>
           </div>
@@ -246,7 +246,7 @@ const workHistory = ref([
 ])
 
 const requestHistory = ref([
-  { id: 'REQ-PRF-003', sections: 'ข้อมูลการติดต่อ', reason: 'เปลี่ยนเบอร์โทรศัพท์', submittedAt: '05/03/2568', status: 'รอดำเนินการ' },
+  { id: 'REQ-PRF-003', sections: 'ข้อมูลการติดต่อ', reason: 'เปลี่ยนเบอร์โทรศัพท์', submittedAt: '05/03/2568', status: 'รออนุมัติ' },
   { id: 'REQ-PRF-002', sections: 'ประวัติการศึกษา', reason: 'ปรับวุฒิการศึกษา', submittedAt: '24/02/2568', status: 'อนุมัติแล้ว' },
   { id: 'REQ-PRF-001', sections: 'ข้อมูลวิชาชีพ', reason: 'ปรับเลขใบอนุญาต', submittedAt: '12/02/2568', status: 'ปฏิเสธ' },
 ])
@@ -346,7 +346,7 @@ function confirmSubmitEdit() {
     sections: selectedSectionLabels.value || '-',
     reason: editForm.value.reason.trim(),
     submittedAt,
-    status: 'รอดำเนินการ',
+    status: 'รออนุมัติ',
   })
 
   auditLogs.value.unshift({

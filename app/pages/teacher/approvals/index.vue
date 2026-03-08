@@ -22,7 +22,7 @@
         </div>
         <select v-model="filterStatus" class="filter-select">
           <option value="">สถานะทั้งหมด</option>
-          <option value="รอดำเนินการ">รอดำเนินการ</option>
+          <option value="รออนุมัติ">รออนุมัติ</option>
           <option value="อนุมัติแล้ว">อนุมัติแล้ว</option>
           <option value="ปฏิเสธ">ปฏิเสธ</option>
           <option value="ยกเลิกแล้ว">ยกเลิกแล้ว</option>
@@ -48,7 +48,7 @@
           <div class="actions">
             <NuxtLink :to="`/teacher/approvals/${row.id}`" class="btn-detail">รายละเอียด</NuxtLink>
             <button
-              v-if="row.status === 'รอดำเนินการ'"
+              v-if="row.status === 'รออนุมัติ'"
               type="button"
               class="btn-delete"
               @click="openCancelModal(row.id)"
@@ -168,7 +168,7 @@
       confirm-label="ยืนยันกู้คืน"
       @confirm="confirmRestore"
     >
-      <div class="confirm-text">ต้องการกู้คืนคำขอนี้กลับไปเป็นรอดำเนินการใช่หรือไม่</div>
+      <div class="confirm-text">ต้องการกู้คืนคำขอนี้กลับไปเป็นรออนุมัติใช่หรือไม่</div>
       <div class="confirm-box">
         <div class="confirm-item"><span>รหัสคำขอ</span><strong>{{ restoreTargetId || '-' }}</strong></div>
       </div>
@@ -318,7 +318,7 @@ function confirmCreate() {
     changeSummary: `จาก ${form.value.oldValue.trim() || '-'} เป็น ${form.value.newValue.trim()}`,
     reason: form.value.detail.trim(),
     submittedAt: new Date().toLocaleDateString('th-TH'),
-    status: 'รอดำเนินการ',
+    status: 'รออนุมัติ',
     approvedBy: '',
     priority: form.value.priority,
     note: '',
@@ -339,7 +339,7 @@ function openRestoreModal(id: string) {
 
 function confirmCancel() {
   const target = rows.value.find(r => r.id === cancelTargetId.value)
-  if (!target || target.status !== 'รอดำเนินการ') {
+  if (!target || target.status !== 'รออนุมัติ') {
     showCancelModal.value = false
     cancelTargetId.value = ''
     return
@@ -363,7 +363,7 @@ function confirmRestore() {
     restoreTargetId.value = ''
     return
   }
-  target.status = 'รอดำเนินการ'
+  target.status = 'รออนุมัติ'
   target.note = ''
   target.approvedBy = ''
   showFeedback(`กู้คืนคำขอ ${target.id} สำเร็จ`)

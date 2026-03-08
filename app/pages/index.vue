@@ -39,6 +39,17 @@ const username = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
+const token = useCookie<string | null>('edu_teacher_token', { maxAge: 60 * 60 * 8, path: '/' })
+const activeRole = useCookie<string | null>('edu_active_role')
+
+if (token.value && activeRole.value === 'teacher') {
+  await navigateTo('/teacher')
+}
+
+if (token.value && activeRole.value !== 'teacher') {
+  token.value = null
+  activeRole.value = null
+}
 
 async function handleLogin() {
   error.value = ''
@@ -51,8 +62,8 @@ async function handleLogin() {
   loading.value = false
 
   // Demo: accept any credentials
-  const token = useCookie('edu_teacher_token', { maxAge: 60 * 60 * 8, path: '/' })
   token.value = 'demo_teacher_token'
+  activeRole.value = 'teacher'
   await navigateTo('/teacher')
 }
 </script>

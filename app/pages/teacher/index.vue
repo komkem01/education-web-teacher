@@ -14,7 +14,7 @@
         <TeacherMetricCard icon="📚" label="รายวิชาที่สอน" :value="String(totalCourses)" sub="ภาคเรียน 1/2568" :trend="0" accent="#16a34a" />
         <TeacherMetricCard icon="🎓" label="นักเรียนทั้งหมด" :value="String(totalStudents)" sub="ในรายวิชาของฉัน" :trend="1" accent="#1d4ed8" />
         <TeacherMetricCard icon="✅" label="คำขอรออนุมัติ" :value="String(pendingApprovals)" sub="รอการพิจารณา" :trend="0" accent="#f59e0b" />
-        <TeacherMetricCard icon="📄" label="คำขอเอกสาร" :value="String(pendingDocs)" sub="รอดำเนินการ" :trend="0" accent="#8b5cf6" />
+        <TeacherMetricCard icon="📄" label="คำขอเอกสาร" :value="String(pendingDocs)" sub="รออนุมัติ/กำลังดำเนินการ" :trend="0" accent="#8b5cf6" />
       </div>
 
       <!-- Mid stats -->
@@ -141,8 +141,8 @@ const lateToday = computed(() => attendanceRecords.value.filter(a => a.status ==
 const gradedStudents = computed(() => gradeRows.value.filter(g => g.total !== null).length)
 const ungradedStudents = computed(() => gradeRows.value.filter(g => g.total === null && g.grade !== 'มส').length)
 const failedStudents = computed(() => gradeRows.value.filter(g => g.grade === 'มส' || g.grade === '0').length)
-const pendingApprovals = computed(() => approvalRows.value.filter(r => r.status === 'รอดำเนินการ').length)
-const pendingDocs = computed(() => docRequests.value.filter(d => d.status === 'ร้องขอ' || d.status === 'กำลังดำเนินการ').length)
+const pendingApprovals = computed(() => approvalRows.value.filter(r => r.status === 'รออนุมัติ').length)
+const pendingDocs = computed(() => docRequests.value.filter(d => d.status === 'รออนุมัติ' || d.status === 'กำลังดำเนินการ').length)
 
 const recentApprovals = computed(() => approvalRows.value.slice(0, 5))
 
