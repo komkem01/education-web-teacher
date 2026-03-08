@@ -33,12 +33,29 @@
 import { ref } from 'vue'
 import { useCookie, navigateTo } from '#app'
 
+type LoginResponse = {
+  data: {
+    access_token: string
+    member: {
+      role: string
+      roles: string[]
+    }
+  }
+}
+
+type SwitchRoleResponse = {
+  data: {
+    access_token: string
+  }
+}
+
 definePageMeta({ layout: false })
 
 const username = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
+const config = useRuntimeConfig()
 const token = useCookie<string | null>('edu_teacher_token', { maxAge: 60 * 60 * 8, path: '/' })
 const activeRole = useCookie<string | null>('edu_active_role')
 
@@ -57,14 +74,51 @@ async function handleLogin() {
     error.value = 'กรุณากรอกข้อมูลให้ครบถ้วน'
     return
   }
-  loading.value = true
-  await new Promise(r => setTimeout(r, 800))
-  loading.value = false
 
-  // Demo: accept any credentials
-  token.value = 'demo_teacher_token'
-  activeRole.value = 'teacher'
-  await navigateTo('/teacher')
+  loading.value = true
+  try {
+    const loginRes = await $fetch<LoginResponse>(`${config.public.apiBase}/auth/login`, {
+      method: 'POST',
+      body: {
+        email: username.value.trim(),
+        password: password.value,
+      },
+    })
+
+    let accessToken = loginRes.data.access_token
+    const primaryRole = loginRes.data.member.role
+    const allRoles = loginRes.data.member.roles ?? []
+
+    if (primaryRole !== 'teacher') {
+      if (!allRoles.includes('teacher')) {
+        error.value = 'บัญชีนี้ไม่มีสิทธิ์เข้าใช้งานพอร์ทัลครู'
+        return
+      }
+
+      const switchRes = await $fetch<SwitchRoleResponse>(`${config.public.apiBase}/auth/switch-role`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: { role: 'teacher' },
+      })
+      accessToken = switchRes.data.access_token
+    }
+
+    token.value = accessToken
+    activeRole.value = 'teacher'
+    await navigateTo('/teacher')
+  }
+  catch (err: any) {
+    if (err?.statusCode === 401) {
+      error.value = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
+      return
+    }
+    error.value = 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง'
+  }
+  finally {
+    loading.value = false
+  }
 }
 </script>
 
