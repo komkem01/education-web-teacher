@@ -9,18 +9,6 @@
         </div>
       </div>
 
-      <div class="api-session section-gap">
-        <div class="api-session-title">ข้อมูลผู้ใช้จาก API</div>
-        <p v-if="mePending" class="api-session-text">กำลังโหลดข้อมูล...</p>
-        <p v-else-if="meError" class="api-session-text api-session-error">ไม่สามารถดึงข้อมูลจาก /auth/me ได้</p>
-        <p v-else class="api-session-text">
-          member: <strong>{{ meData?.member_id }}</strong>
-          · role: <strong>{{ meData?.role }}</strong>
-          · school: <strong>{{ meData?.school_id }}</strong>
-          · หมดอายุ: <strong>{{ meData?.expires_at }}</strong>
-        </p>
-      </div>
-
       <!-- Metric Cards -->
       <div class="grid-4 section-gap">
         <TeacherMetricCard icon="📚" label="รายวิชาที่สอน" :value="String(totalCourses)" sub="ภาคเรียน 1/2568" :trend="0" accent="#16a34a" />
@@ -134,21 +122,6 @@ import { useDocumentsData } from '~/composables/useDocumentsData'
 definePageMeta({ layout: 'teacher' })
 
 const { loading } = usePageLoad()
-const config = useRuntimeConfig()
-const authToken = useCookie<string | null>('edu_teacher_token')
-
-const { data: meResponse, pending: mePending, error: meError } = useAsyncData(
-  'teacher-auth-me',
-  () => $fetch<{ data: { member_id: string; school_id: string; role: string; expires_at: string } }>(`${config.public.apiBase}/auth/me`, {
-    headers: {
-      Authorization: `Bearer ${authToken.value}`,
-    },
-  }),
-  { server: false },
-)
-
-const meData = computed(() => meResponse.value?.data)
-
 const { rows: courseRows } = useCoursesData()
 const { rows: studentRows } = useStudentsData()
 const { records: attendanceRecords } = useAttendanceData()
@@ -184,10 +157,6 @@ function statusClass(s: string) {
 .page-header { margin-bottom: 24px; }
 .page-title { font-size: 1.3rem; font-weight: 700; color: #111827; margin: 0 0 4px; }
 .page-desc { font-size: 0.875rem; color: #6b7280; margin: 0; }
-.api-session { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 10px 12px; }
-.api-session-title { font-size: 0.78rem; font-weight: 700; color: #166534; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
-.api-session-text { margin: 0; font-size: 0.82rem; color: #14532d; }
-.api-session-error { color: #b91c1c; }
 .section-gap { margin-bottom: 24px; }
 
 .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; }
