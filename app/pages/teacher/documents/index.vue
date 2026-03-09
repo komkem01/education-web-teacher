@@ -127,6 +127,7 @@
 import { ref, computed } from 'vue'
 import { useDocumentsData } from '~/composables/useDocumentsData'
 import type { DocumentRequest } from '~/composables/useDocumentsData'
+import { ensureTeacherSession } from '~/composables/useTeacherSession'
 
 definePageMeta({ layout: 'teacher' })
 
@@ -187,20 +188,60 @@ function submitCreate() {
   showCreateConfirm.value = true
 }
 
-function confirmCreate() {
-  const maxId = requests.value.reduce((max, item) => {
-    const n = Number(item.id.replace('DOC', ''))
-    return Number.isNaN(n) ? max : Math.max(max, n)
-  }, 0)
-  const id = `DOC${String(maxId + 1).padStart(3, '0')}`
+type BaseResponse<T> = { data: T }
+type LeaveLogItem = {
+  id: string
+  type: 'sick' | 'business' | 'vacation' | 'other'
+  start_date: string | null
+  end_date: string | null
+  reason: string | null
+  status: 'pending' | 'approved' | 'rejected'
+}
+
+function toLeaveType(value: string): LeaveLogItem['type'] {
+  if (value.includes('ไปราชการ')) return 'business'
+  return 'other'
+}
+
+async function getSessionContext() {
+  const session = await ensureTeacherSession()
+  const teacherID = session?.teacher?.id
+  const token = useCookie<string | null>('edu_teacher_token')
+  const config = useRuntimeConfig()
+  if (!teacherID || !token.value) return null
+  return {
+    teacherID,
+    headers: {
+      Authorization: `Bearer ${token.value}`,
+      'Content-Type': 'application/json',
+    },
+    apiBase: config.public.apiBase,
+  }
+}
+
+async function confirmCreate() {
+  const context = await getSessionContext()
+  if (!context) return
+
   const detailParts = [
     `วัตถุประสงค์: ${form.value.purpose.trim()}`,
     `จำนวน: ${form.value.copies} ฉบับ`,
   ]
   if (form.value.detail.trim()) detailParts.push(`เพิ่มเติม: ${form.value.detail.trim()}`)
 
+  const payloadReason = detailParts.join(' | ')
+  const created = await $fetch<BaseResponse<LeaveLogItem>>(`${context.apiBase}/teachers/${context.teacherID}/leave-logs`, {
+    method: 'POST',
+    headers: context.headers,
+    body: {
+      type: toLeaveType(form.value.type),
+      reason: payloadReason,
+      status: 'pending',
+    },
+  })
+
   requests.value.unshift({
-    id,
+    id: created.data.id,
     type: form.value.type,
     detail: detailParts.join(' | '),
     requestedAt: new Date().toLocaleDateString('th-TH'),
@@ -210,7 +251,7 @@ function confirmCreate() {
   })
   showCreateConfirm.value = false
   showCreate.value = false
-  showFeedback(`ส่งคำขอเอกสาร ${id} สำเร็จ`)
+  showFeedback(`ส่งคำขอเอกสาร ${created.data.id} สำเร็จ`)
 }
 
 function openCancelModal(id: string) {
@@ -218,13 +259,37 @@ function openCancelModal(id: string) {
   showCancelModal.value = true
 }
 
-function confirmCancel() {
+async function confirmCancel() {
   const target = requests.value.find(r => r.id === cancelTargetId.value)
   if (!target || target.status !== 'รออนุมัติ') {
     showCancelModal.value = false
     cancelTargetId.value = ''
     return
   }
+
+  const context = await getSessionContext()
+  if (!context) return
+  const listRes = await $fetch<BaseResponse<LeaveLogItem[]>>(`${context.apiBase}/teachers/${context.teacherID}/leave-logs`, { headers: context.headers })
+  const origin = (listRes.data || []).find(item => item.id === target.id)
+  if (!origin) {
+    showCancelModal.value = false
+    cancelTargetId.value = ''
+    return
+  }
+
+  await $fetch(`${context.apiBase}/teachers/${context.teacherID}/leave-logs/${target.id}`, {
+    method: 'PATCH',
+    headers: context.headers,
+    body: {
+      type: origin.type,
+      start_date: origin.start_date,
+      end_date: origin.end_date,
+      reason: origin.reason,
+      status: 'rejected',
+      approved_by_staff_id: null,
+    },
+  })
+
   target.status = 'ยกเลิกแล้ว'
   target.canceledByRequester = true
   target.note = 'ผู้ขอยกเลิกคำขอเอกสาร'
@@ -242,13 +307,37 @@ function openRestoreModal(id: string) {
   showRestoreModal.value = true
 }
 
-function confirmRestore() {
+async function confirmRestore() {
   const target = requests.value.find(r => r.id === restoreTargetId.value)
   if (!target || !canRestoreRequest(target)) {
     showRestoreModal.value = false
     restoreTargetId.value = ''
     return
   }
+
+  const context = await getSessionContext()
+  if (!context) return
+  const listRes = await $fetch<BaseResponse<LeaveLogItem[]>>(`${context.apiBase}/teachers/${context.teacherID}/leave-logs`, { headers: context.headers })
+  const origin = (listRes.data || []).find(item => item.id === target.id)
+  if (!origin) {
+    showRestoreModal.value = false
+    restoreTargetId.value = ''
+    return
+  }
+
+  await $fetch(`${context.apiBase}/teachers/${context.teacherID}/leave-logs/${target.id}`, {
+    method: 'PATCH',
+    headers: context.headers,
+    body: {
+      type: origin.type,
+      start_date: origin.start_date,
+      end_date: origin.end_date,
+      reason: origin.reason,
+      status: 'pending',
+      approved_by_staff_id: null,
+    },
+  })
+
   target.status = 'รออนุมัติ'
   target.canceledByRequester = false
   target.note = ''

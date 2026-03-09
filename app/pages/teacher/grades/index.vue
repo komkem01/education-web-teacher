@@ -130,6 +130,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useGradesData, type GradeRecord } from '~/composables/useGradesData'
+import { ensureTeacherSession } from '~/composables/useTeacherSession'
 import { useCoursesData } from '~/composables/useCoursesData'
 
 definePageMeta({ layout: 'teacher' })
@@ -250,7 +251,42 @@ function openEdit(row: GradeRecord) {
   showEditModal.value = true
 }
 
-function submitEdit() {
+async function submitEdit() {
+  const session = await ensureTeacherSession()
+  const teacherID = session?.teacher?.id
+  const token = useCookie<string | null>('edu_teacher_token')
+  const config = useRuntimeConfig()
+  if (!teacherID || !token.value || !editRow.value) {
+    showEditModal.value = false
+    return
+  }
+
+  await $fetch(`${config.public.apiBase}/teachers/${teacherID}/profile-requests`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token.value}`,
+      'Content-Type': 'application/json',
+    },
+    body: {
+      requested_data: {
+        requestType: 'grade-update',
+        sectionLabels: 'แก้ไขคะแนน',
+        studentCode: editRow.value.studentCode,
+        studentName: editRow.value.studentName,
+        courseId: editRow.value.courseId,
+        courseName: editRow.value.courseName,
+        requestedScores: {
+          midterm: editForm.value.midterm,
+          final: editForm.value.final,
+          behavior: editForm.value.behavior,
+          specialGrade: editForm.value.specialGrade,
+        },
+      },
+      reason: `ขอแก้ไขคะแนนของ ${editRow.value.studentName}`,
+      status: 'pending',
+    },
+  })
+
   showEditModal.value = false
 }
 

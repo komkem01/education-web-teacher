@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { ensureTeacherSession } from './useTeacherSession'
 
 export interface AnnouncementRow {
   id: string
@@ -11,13 +12,67 @@ export interface AnnouncementRow {
   summary: string
 }
 
+type BaseResponse<T> = { data: T }
+
+type SchoolAnnouncementItem = {
+  id: string
+  title: string | null
+  content: string | null
+  target: string | null
+  is_active: boolean
+  created_at: string
+}
+
+function toThaiDate(value: string | null | undefined) {
+  if (!value) return '-'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return '-'
+  return d.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok' })
+}
+
+function categoryFromTarget(target: string | null | undefined) {
+  const raw = (target || '').toLowerCase()
+  if (raw.includes('teacher')) return 'ครู'
+  if (raw.includes('student')) return 'นักเรียน'
+  if (raw.includes('parent')) return 'ผู้ปกครอง'
+  return 'ทั่วไป'
+}
+
 export function useAnnouncementsData() {
-  const rows = ref<AnnouncementRow[]>([
-    { id: 'ANN001', title: 'กำหนดการส่งผลการเรียนภาคเรียน 1/2568', category: 'วิชาการ', publishedAt: '06/03/2568', author: 'งานวัดผล', status: 'เผยแพร่แล้ว', pinned: true, summary: 'ครูผู้สอนทุกท่านกรุณาส่งผลการเรียนภายในวันที่ 20 มีนาคม 2568' },
-    { id: 'ANN002', title: 'ประชุมคณะครูประจำเดือนมีนาคม', category: 'ทั่วไป', publishedAt: '05/03/2568', author: 'ฝ่ายบริหาร', status: 'เผยแพร่แล้ว', pinned: false, summary: 'ขอเชิญคณะครูเข้าร่วมประชุมวันที่ 10 มีนาคม เวลา 14:00 น.' },
-    { id: 'ANN003', title: 'แนวทางการจัดทำแผนการสอน ปีการศึกษา 2568', category: 'วิชาการ', publishedAt: '01/03/2568', author: 'งานวิชาการ', status: 'เผยแพร่แล้ว', pinned: false, summary: 'รายละเอียดการจัดทำแผนการสอนตามหลักสูตรแกนกลาง 2568' },
-    { id: 'ANN004', title: 'กิจกรรมวันไหว้ครูปีการศึกษา 2568', category: 'กิจกรรม', publishedAt: '28/02/2568', author: 'ฝ่ายกิจการนักเรียน', status: 'เผยแพร่แล้ว', pinned: false, summary: 'กำหนดจัดงานวันไหว้ครูวันที่ 12 มิถุนายน 2568' },
-  ])
+  const rows = ref<AnnouncementRow[]>([])
+
+  if (import.meta.client) {
+    ensureTeacherSession().then(async () => {
+      const token = useCookie<string | null>('edu_teacher_token')
+      if (!token.value) {
+        rows.value = []
+        return
+      }
+
+      const headers = { Authorization: `Bearer ${token.value}` }
+      const config = useRuntimeConfig()
+
+      try {
+        const res = await $fetch<BaseResponse<SchoolAnnouncementItem[]>>(`${config.public.apiBase}/teachers-meta/school-announcements?only_active=true`, { headers })
+        const items = res.data || []
+        rows.value = items.map((item) => ({
+          id: item.id,
+          title: item.title?.trim() || 'ประกาศ',
+          category: categoryFromTarget(item.target),
+          publishedAt: toThaiDate(item.created_at),
+          author: 'ฝ่ายบริหาร',
+          status: item.is_active ? 'เผยแพร่แล้ว' : 'ฉบับร่าง',
+          pinned: false,
+          summary: item.content?.trim() || '-',
+        }))
+      }
+      catch {
+        rows.value = []
+      }
+    }).catch(() => {
+      rows.value = []
+    })
+  }
 
   return { rows }
 }

@@ -22,9 +22,9 @@
       <div class="divider" />
 
       <div class="user-chip">
-        <div class="user-avatar">ค</div>
+        <div class="user-avatar">{{ avatarLetter }}</div>
         <div class="user-detail">
-          <span class="user-name">นายสมชาย ใจดี</span>
+          <span class="user-name">{{ teacherName }}</span>
           <span class="user-role">ครูผู้สอน</span>
         </div>
         <button type="button" class="logout-btn" @click="logout" title="ออกจากระบบ">
@@ -46,6 +46,9 @@ defineEmits<{ (e: 'toggle-sidebar'): void }>()
 
 const route = useRoute()
 const authToken = useCookie<string | null>('edu_teacher_token')
+const activeRole = useCookie<string | null>('edu_active_role')
+const teacherEmail = useCookie<string | null>('edu_teacher_email')
+const teacherSession = useTeacherSessionState()
 
 const titleMap: Record<string, string> = {
   '/teacher': 'ภาพรวม',
@@ -67,8 +70,27 @@ const title = computed(() => {
   return base ? titleMap[base] : 'พอร์ทัลครู'
 })
 
+if (import.meta.client) {
+  ensureTeacherSession().catch(() => {
+    // Keep lightweight fallback labels if session lookup fails.
+  })
+}
+
+const teacherName = computed(() => {
+  const t = teacherSession.value?.teacher
+  const fullName = `${t?.first_name || ''} ${t?.last_name || ''}`.trim()
+  if (fullName) return fullName
+  if (teacherEmail.value) return teacherEmail.value
+  return 'ครูผู้สอน'
+})
+
+const avatarLetter = computed(() => teacherName.value.charAt(0) || 'ค')
+
 const logout = async () => {
   authToken.value = null
+  activeRole.value = null
+  teacherEmail.value = null
+  resetTeacherSessionState()
   await navigateTo('/')
 }
 </script>

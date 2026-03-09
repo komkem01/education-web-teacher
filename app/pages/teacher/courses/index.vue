@@ -164,6 +164,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useCoursesData, type CourseRow } from '~/composables/useCoursesData'
+import { ensureTeacherSession } from '~/composables/useTeacherSession'
 
 definePageMeta({ layout: 'teacher' })
 
@@ -319,9 +320,15 @@ function submitAdd() {
   addForm.value = { name: '', subject: '', level: '', credits: 1.5, room: '' }
 }
 
-function submitEdit() {
+async function submitEdit() {
   editSubmitAttempted.value = true
   if (!isEditRequestValid.value) return
+
+  const session = await ensureTeacherSession()
+  const teacherID = session?.teacher?.id
+  const token = useCookie<string | null>('edu_teacher_token')
+  const config = useRuntimeConfig()
+  if (!teacherID || !token.value) return
 
   const requestPayload = {
     requestType: 'course-update',
@@ -337,8 +344,19 @@ function submitEdit() {
       }, {} as Record<string, string>),
     otherDetail: editTargets.value.includes('other') ? editOtherDetail.value.trim() : '',
   }
-  // TODO: send requestPayload to API when endpoint is ready.
-  void requestPayload
+
+  await $fetch(`${config.public.apiBase}/teachers/${teacherID}/profile-requests`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token.value}`,
+      'Content-Type': 'application/json',
+    },
+    body: {
+      requested_data: requestPayload,
+      reason: editForm.value.reason.trim(),
+      status: 'pending',
+    },
+  })
 
   showEditModal.value = false
   editRequestValues.value = { name: '', subject: '', level: '', room: '', credits: '', semester: '' }

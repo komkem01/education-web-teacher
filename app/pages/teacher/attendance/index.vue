@@ -112,6 +112,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useAttendanceData, type AttendanceRecord } from '~/composables/useAttendanceData'
+import { ensureTeacherSession } from '~/composables/useTeacherSession'
 
 definePageMeta({ layout: 'teacher' })
 
@@ -185,8 +186,37 @@ function rowClass(status: string) {
   return 'row-present'
 }
 
-function saveAttendance() {
-  // In production: POST to API with selectedDate + selectedClassroom + displayRecords
+async function saveAttendance() {
+  const session = await ensureTeacherSession()
+  const teacherID = session?.teacher?.id
+  const token = useCookie<string | null>('edu_teacher_token')
+  const config = useRuntimeConfig()
+  if (!teacherID || !token.value) return
+
+  await $fetch(`${config.public.apiBase}/teachers/${teacherID}/profile-requests`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token.value}`,
+      'Content-Type': 'application/json',
+    },
+    body: {
+      requested_data: {
+        requestType: 'attendance-save',
+        sectionLabels: 'บันทึกการเช็คชื่อ',
+        selectedDate: selectedDate.value,
+        selectedClassroom: selectedClassroom.value,
+        rows: displayRecords.value.map((row) => ({
+          student_id: row.id,
+          student_code: row.studentCode,
+          student_name: row.studentName,
+          status: row.status,
+          note: row.note,
+        })),
+      },
+      reason: `บันทึกการเช็คชื่อห้อง ${selectedClassroom.value} วันที่ ${selectedDate.value}`,
+      status: 'pending',
+    },
+  })
 }
 
 function openSaveConfirm() {
@@ -194,8 +224,8 @@ function openSaveConfirm() {
   showSaveConfirm.value = true
 }
 
-function confirmSaveAttendance() {
-  saveAttendance()
+async function confirmSaveAttendance() {
+  await saveAttendance()
   showSaveConfirm.value = false
   lastSavedSnapshot.value = currentSnapshot.value
   const now = new Date()

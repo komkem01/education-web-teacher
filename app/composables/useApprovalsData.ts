@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { ensureTeacherSession } from './useTeacherSession'
 
 export interface ApprovalRequest {
   id: string
@@ -14,71 +15,73 @@ export interface ApprovalRequest {
   note: string
 }
 
+type BaseResponse<T> = { data: T }
+
+type ProfileRequestItem = {
+  id: string
+  requested_data: Record<string, unknown> | null
+  reason: string | null
+  status: 'pending' | 'approved' | 'rejected'
+  comment: string | null
+  created_at: string
+}
+
+function toThaiDate(value: string | null | undefined) {
+  if (!value) return '-'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return '-'
+  return d.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok' })
+}
+
+function toThaiStatus(status: ProfileRequestItem['status']): ApprovalRequest['status'] {
+  if (status === 'approved') return 'อนุมัติแล้ว'
+  if (status === 'rejected') return 'ปฏิเสธ'
+  return 'รออนุมัติ'
+}
+
 export function useApprovalsData() {
-  const rows = ref<ApprovalRequest[]>([
-    {
-      id: 'APR001',
-      type: 'ขอแก้ไขข้อมูลนักเรียน',
-      detail: 'แก้ไขข้อมูลนักเรียน: ด.ช.อานนท์ สุขใจ',
-      editTargets: ['ที่อยู่', 'เบอร์โทรผู้ปกครอง'],
-      changeSummary: 'ที่อยู่ = 99/21 ม.4 ต.หนองบัว, เบอร์โทรผู้ปกครอง = 089-123-4567',
-      reason: 'ข้อมูลเดิมติดต่อไม่ได้',
-      submittedAt: '05/03/2568',
-      status: 'รออนุมัติ',
-      approvedBy: '',
-      priority: 'ปกติ',
-      note: '',
-    },
-    {
-      id: 'APR002',
-      type: 'ขอแก้ไขผลการเรียน',
-      detail: 'แก้ไขคะแนนวิชาคณิตศาสตร์ ม.3/1',
-      editTargets: ['คะแนนกลางภาค', 'คะแนนปลายภาค'],
-      changeSummary: 'คะแนนกลางภาค = 38, คะแนนปลายภาค = 41',
-      reason: 'บันทึกคะแนนผิดจากเอกสารต้นทาง',
-      submittedAt: '04/03/2568',
-      status: 'รออนุมัติ',
-      approvedBy: '',
-      priority: 'ด่วน',
-      note: '',
-    },
-    {
-      id: 'APR003',
-      type: 'ขอแก้ไขข้อมูลรายวิชา',
-      detail: 'ปรับข้อมูลรายวิชา วิทยาศาสตร์ ม.2/3',
-      editTargets: ['ห้องเรียน'],
-      changeSummary: 'ห้องเรียน = 402',
-      reason: 'ย้ายอาคารเรียน',
-      submittedAt: '01/03/2568',
-      status: 'อนุมัติแล้ว',
-      approvedBy: 'นางสาวสมใจ รักงาน',
-      priority: 'ปกติ',
-      note: 'อนุมัติเรียบร้อย',
-    },
-    {
-      id: 'APR004',
-      type: 'ขอเอกสาร',
-      detail: 'ขอเอกสาร ปพ.5 ภาคเรียน 1/2568',
-      submittedAt: '28/02/2568',
-      status: 'อนุมัติแล้ว',
-      approvedBy: 'นางสาวสมใจ รักงาน',
-      priority: 'ปกติ',
-      note: 'ดำเนินการแล้ว',
-    },
-    {
-      id: 'APR005',
-      type: 'ขอแก้ไขข้อมูลส่วนตัว',
-      detail: 'เปลี่ยนเบอร์โทรศัพท์',
-      editTargets: ['เบอร์โทรศัพท์'],
-      changeSummary: 'เบอร์โทรศัพท์ = 081-456-9988',
-      reason: 'เปลี่ยนหมายเลขใหม่',
-      submittedAt: '20/02/2568',
-      status: 'ปฏิเสธ',
-      approvedBy: 'นางสาวสมใจ รักงาน',
-      priority: 'ปกติ',
-      note: 'ข้อมูลอ้างอิงไม่ครบ',
-    },
-  ])
+  const rows = ref<ApprovalRequest[]>([])
+
+  if (import.meta.client) {
+    ensureTeacherSession().then(async (session) => {
+      const teacherID = session?.teacher?.id
+      const token = useCookie<string | null>('edu_teacher_token')
+      if (!teacherID || !token.value) {
+        rows.value = []
+        return
+      }
+
+      const headers = { Authorization: `Bearer ${token.value}` }
+      const config = useRuntimeConfig()
+
+      try {
+        const res = await $fetch<BaseResponse<ProfileRequestItem[]>>(`${config.public.apiBase}/teachers/${teacherID}/profile-requests`, { headers })
+        const items = res.data || []
+        rows.value = items.map((item) => {
+          const requestedData = item.requested_data || {}
+          const keys = Object.keys(requestedData)
+          return {
+            id: item.id,
+            type: 'คำขอแก้ไขข้อมูล',
+            detail: keys.length > 0 ? `แก้ไข ${keys.join(', ')}` : 'คำขอแก้ไขข้อมูล',
+            editTargets: keys,
+            changeSummary: keys.length > 0 ? keys.map(key => `${key} = ${String((requestedData as any)[key] ?? '-')}`).join(', ') : '',
+            reason: item.reason || '',
+            submittedAt: toThaiDate(item.created_at),
+            status: toThaiStatus(item.status),
+            approvedBy: '',
+            priority: 'ปกติ',
+            note: item.comment || '',
+          }
+        })
+      }
+      catch {
+        rows.value = []
+      }
+    }).catch(() => {
+      rows.value = []
+    })
+  }
 
   return { rows }
 }

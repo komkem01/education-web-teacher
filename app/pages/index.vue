@@ -58,6 +58,7 @@ const error = ref('')
 const config = useRuntimeConfig()
 const token = useCookie<string | null>('edu_teacher_token', { maxAge: 60 * 60 * 8, path: '/' })
 const activeRole = useCookie<string | null>('edu_active_role')
+const teacherEmail = useCookie<string | null>('edu_teacher_email')
 
 if (token.value && activeRole.value === 'teacher') {
   await navigateTo('/teacher')
@@ -107,6 +108,7 @@ async function handleLogin() {
 
     token.value = accessToken
     activeRole.value = 'teacher'
+    teacherEmail.value = username.value.trim().toLowerCase()
     await navigateTo('/teacher')
   }
   catch (err: any) {

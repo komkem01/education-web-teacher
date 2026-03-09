@@ -19,7 +19,7 @@
     <Transition name="fade">
       <div v-if="!collapsed" class="school-tag">
         <span class="online-dot" />
-        <span class="school-name">โรงเรียนตัวอย่างวิทยา</span>
+        <span class="school-name">{{ schoolName }}</span>
       </div>
     </Transition>
 
@@ -78,10 +78,10 @@
     <!-- Footer -->
     <div class="sidebar-footer">
       <div class="user-row">
-        <div class="avatar">ค</div>
+        <div class="avatar">{{ avatarLetter }}</div>
         <Transition name="fade">
           <div v-if="!collapsed" class="user-info">
-            <span class="user-name">นายสมชาย ใจดี</span>
+            <span class="user-name">{{ teacherName }}</span>
             <span class="user-role">ครูผู้สอน</span>
           </div>
         </Transition>
@@ -91,13 +91,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 defineProps<{ collapsed: boolean }>()
 defineEmits<{ (e: 'toggle'): void }>()
 
 const route = useRoute()
+const teacherEmail = useCookie<string | null>('edu_teacher_email')
+const teacherSession = useTeacherSessionState()
+
+if (import.meta.client) {
+  ensureTeacherSession().catch(() => {
+    // Keep fallback labels if session lookup fails.
+  })
+}
+
+const teacherName = computed(() => {
+  const t = teacherSession.value?.teacher
+  const fullName = `${t?.first_name || ''} ${t?.last_name || ''}`.trim()
+  if (fullName) return fullName
+  if (teacherEmail.value) return teacherEmail.value
+  return 'ครูผู้สอน'
+})
+
+const avatarLetter = computed(() => teacherName.value.charAt(0) || 'ค')
+const schoolName = computed(() => teacherSession.value?.schoolName || 'ยังไม่ระบุโรงเรียน')
 
 const ICON_DASHBOARD = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" fill="currentColor" fill-opacity=".8"/><rect x="9" y="1" width="6" height="6" rx="1.5" fill="currentColor" fill-opacity=".8"/><rect x="1" y="9" width="6" height="6" rx="1.5" fill="currentColor" fill-opacity=".8"/><rect x="9" y="9" width="6" height="6" rx="1.5" fill="currentColor" fill-opacity=".8"/></svg>`
 const ICON_COURSE = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M5 6h6M5 9h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="12" cy="12" r="3" fill="#fff" stroke="currentColor" stroke-width="1.2"/><path d="M11 12l.8.8 1.5-1.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>`

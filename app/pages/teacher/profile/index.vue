@@ -185,6 +185,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { ensureTeacherSession } from '~/composables/useTeacherSession'
 
 definePageMeta({ layout: 'teacher' })
 
@@ -214,48 +215,203 @@ const sectionOptions = [
   { value: 'other', label: 'อื่นๆ' },
 ]
 
+type BaseResponse<T> = { data: T }
+
+type TeacherItem = {
+  id: string
+  teacher_code: string | null
+  first_name: string | null
+  last_name: string | null
+  citizen_id: string | null
+  phone: string | null
+  current_position: string | null
+  current_academic_standing: string | null
+  department: string | null
+  start_date: string | null
+  addresses?: Array<{ address_line: string; is_primary: boolean }>
+}
+
+type TeacherEducationItem = {
+  degree_level: string | null
+  degree_name: string | null
+  major: string | null
+  university: string | null
+  graduation_year: string | null
+}
+
+type TeacherWorkItem = {
+  organization: string | null
+  position: string | null
+  start_date: string | null
+  end_date: string | null
+  is_current: boolean
+}
+
+type TeacherProfileRequestItem = {
+  id: string
+  requested_data: Record<string, unknown> | null
+  reason: string | null
+  status: 'pending' | 'approved' | 'rejected'
+  created_at: string
+  processed_at: string | null
+}
+
+type SubjectAssignmentItem = {
+  classroom_id: string
+}
+
+type ClassroomItem = { name: string | null }
+
 const profile = ref({
-  code: 'TCH001',
-  prefix: 'นาย',
-  firstName: 'สมศักดิ์',
-  lastName: 'ใจดี',
-  dob: '01/01/2510',
-  gender: 'ชาย',
-  idCard: '1-1234-56789-01-2',
-  email: 'somsak.j@school.ac.th',
-  phone: '081-234-5678',
-  address: '123 ถ.พหลโยธิน กรุงเทพฯ 10900',
-  department: 'กลุ่มสาระคณิตศาสตร์',
-  academicStanding: 'ครูชำนาญการ',
-  startDate: '01/06/2545',
-  licenseNo: 'ค.บ. 5012345',
-  licenseExpiry: '31/12/2569',
-  weeklyTeachingHours: 22,
-  activeCourses: 5,
-  advisoryClass: 'ม.3/1',
+  code: '-',
+  prefix: '',
+  firstName: '-',
+  lastName: '',
+  dob: '-',
+  gender: '-',
+  idCard: '-',
+  email: '-',
+  phone: '-',
+  address: '-',
+  department: '-',
+  academicStanding: '-',
+  startDate: '-',
+  licenseNo: '-',
+  licenseExpiry: '-',
+  weeklyTeachingHours: 0,
+  activeCourses: 0,
+  advisoryClass: '-',
 })
 
-const educationHistory = ref([
-  { degree: 'ค.บ.', field: 'คณิตศาสตร์ศึกษา', institute: 'มหาวิทยาลัยศรีนครินทรวิโรฒ', year: '2536' },
-  { degree: 'ศษ.ม.', field: 'การบริหารการศึกษา', institute: 'มหาวิทยาลัยเกษตรศาสตร์', year: '2543' },
-])
+const educationHistory = ref<Array<{ degree: string; field: string; institute: string; year: string }>>([])
+const workHistory = ref<Array<{ position: string; organization: string; period: string }>>([])
+const requestHistory = ref<Array<{ id: string; sections: string; reason: string; submittedAt: string; status: string }>>([])
+const auditLogs = ref<Array<{ id: string; action: string; target: string; performedAt: string; actor: string }>>([])
 
-const workHistory = ref([
-  { position: 'ครูผู้ช่วย', organization: 'โรงเรียนบ้านตัวอย่าง', period: '2537 - 2541' },
-  { position: 'ครูชำนาญการ', organization: 'โรงเรียนศึกษาก้าวหน้า', period: '2542 - ปัจจุบัน' },
-])
+function formatThaiDate(value: string | null | undefined) {
+  if (!value) return '-'
+  return new Date(value).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok' })
+}
 
-const requestHistory = ref([
-  { id: 'REQ-PRF-003', sections: 'ข้อมูลการติดต่อ', reason: 'เปลี่ยนเบอร์โทรศัพท์', submittedAt: '05/03/2568', status: 'รออนุมัติ' },
-  { id: 'REQ-PRF-002', sections: 'ประวัติการศึกษา', reason: 'ปรับวุฒิการศึกษา', submittedAt: '24/02/2568', status: 'อนุมัติแล้ว' },
-  { id: 'REQ-PRF-001', sections: 'ข้อมูลวิชาชีพ', reason: 'ปรับเลขใบอนุญาต', submittedAt: '12/02/2568', status: 'ปฏิเสธ' },
-])
+function formatThaiDateTime(value: string | null | undefined) {
+  if (!value) return '-'
+  return new Date(value).toLocaleString('th-TH', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
 
-const auditLogs = ref([
-  { id: 'AUD-003', action: 'ส่งคำขอแก้ไข', target: 'ข้อมูลการติดต่อ', performedAt: '05/03/2568 10:45', actor: 'ครูผู้ใช้งาน' },
-  { id: 'AUD-002', action: 'อนุมัติคำขอ', target: 'ประวัติการศึกษา', performedAt: '25/02/2568 13:20', actor: 'เจ้าหน้าที่บุคลากร' },
-  { id: 'AUD-001', action: 'ปฏิเสธคำขอ', target: 'ข้อมูลวิชาชีพ', performedAt: '13/02/2568 09:10', actor: 'เจ้าหน้าที่บุคลากร' },
-])
+function toThaiRequestStatus(status: TeacherProfileRequestItem['status']) {
+  if (status === 'approved') return 'อนุมัติแล้ว'
+  if (status === 'rejected') return 'ปฏิเสธ'
+  return 'รออนุมัติ'
+}
+
+async function refreshProfileData() {
+  const session = await ensureTeacherSession()
+  const teacherID = session?.teacher?.id
+  const token = useCookie<string | null>('edu_teacher_token')
+  const config = useRuntimeConfig()
+  if (!teacherID || !token.value) return
+
+  const headers = { Authorization: `Bearer ${token.value}` }
+
+  const [teacherRes, educationRes, workRes, requestRes, assignmentRes] = await Promise.all([
+    $fetch<BaseResponse<TeacherItem>>(`${config.public.apiBase}/teachers/${teacherID}`, { headers }),
+    $fetch<BaseResponse<TeacherEducationItem[]>>(`${config.public.apiBase}/teachers/${teacherID}/educations`, { headers }),
+    $fetch<BaseResponse<TeacherWorkItem[]>>(`${config.public.apiBase}/teachers/${teacherID}/work-experiences`, { headers }),
+    $fetch<BaseResponse<TeacherProfileRequestItem[]>>(`${config.public.apiBase}/teachers/${teacherID}/profile-requests`, { headers }),
+    $fetch<BaseResponse<SubjectAssignmentItem[]>>(`${config.public.apiBase}/teachers/${teacherID}/subject-assignments?only_active=true`, { headers }),
+  ])
+
+  const teacher = teacherRes.data
+  const primaryAddress = (teacher.addresses || []).find(addr => addr.is_primary)?.address_line || (teacher.addresses || [])[0]?.address_line || '-'
+
+  profile.value = {
+    code: teacher.teacher_code?.trim() || teacher.id,
+    prefix: '',
+    firstName: teacher.first_name?.trim() || '-',
+    lastName: teacher.last_name?.trim() || '',
+    dob: '-',
+    gender: '-',
+    idCard: teacher.citizen_id?.trim() || '-',
+    email: session.member?.email || '-',
+    phone: teacher.phone?.trim() || '-',
+    address: primaryAddress,
+    department: teacher.department?.trim() || '-',
+    academicStanding: teacher.current_academic_standing?.trim() || '-',
+    startDate: formatThaiDate(teacher.start_date),
+    licenseNo: '-',
+    licenseExpiry: '-',
+    weeklyTeachingHours: 0,
+    activeCourses: (assignmentRes.data || []).length,
+    advisoryClass: '-',
+  }
+
+  educationHistory.value = (educationRes.data || []).map((item) => ({
+    degree: item.degree_name?.trim() || item.degree_level?.trim() || '-',
+    field: item.major?.trim() || '-',
+    institute: item.university?.trim() || '-',
+    year: item.graduation_year?.trim() || '-',
+  }))
+
+  workHistory.value = (workRes.data || []).map((item) => ({
+    position: item.position?.trim() || '-',
+    organization: item.organization?.trim() || '-',
+    period: `${formatThaiDate(item.start_date)} - ${item.is_current ? 'ปัจจุบัน' : formatThaiDate(item.end_date)}`,
+  }))
+
+  const requests = (requestRes.data || []).slice().sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+  requestHistory.value = requests.map((req) => {
+    const data = req.requested_data || {}
+    return {
+      id: req.id,
+      sections: String(data.sectionLabels || '-'),
+      reason: req.reason?.trim() || '-',
+      submittedAt: formatThaiDate(req.created_at),
+      status: toThaiRequestStatus(req.status),
+    }
+  })
+
+  auditLogs.value = requests.flatMap((req) => {
+    const target = String(req.requested_data?.sectionLabels || '-')
+    const items = [{
+      id: `submit-${req.id}`,
+      action: 'ส่งคำขอแก้ไข',
+      target,
+      performedAt: formatThaiDateTime(req.created_at),
+      actor: `${profile.value.firstName} ${profile.value.lastName}`.trim() || 'ครูผู้ใช้งาน',
+    }]
+    if (req.status !== 'pending' && req.processed_at) {
+      items.push({
+        id: `processed-${req.id}`,
+        action: req.status === 'approved' ? 'อนุมัติคำขอ' : 'ปฏิเสธคำขอ',
+        target,
+        performedAt: formatThaiDateTime(req.processed_at),
+        actor: 'เจ้าหน้าที่บุคลากร',
+      })
+    }
+    return items
+  })
+
+  const classroomIDs = [...new Set((assignmentRes.data || []).map(item => item.classroom_id).filter(Boolean))]
+  if (classroomIDs.length > 0) {
+    const classroomRes = await Promise.all(classroomIDs.map(async (id) => {
+      try {
+        const response = await $fetch<BaseResponse<ClassroomItem>>(`${config.public.apiBase}/teachers-meta/classrooms/${id}`, { headers })
+        return response.data?.name?.trim() || ''
+      }
+      catch {
+        return ''
+      }
+    }))
+    profile.value.advisoryClass = classroomRes.find(Boolean) || '-'
+  }
+}
 
 const selectedSectionLabels = computed(() =>
   selectedSections.value
@@ -315,18 +471,15 @@ function submitEdit() {
   showConfirmModal.value = true
 }
 
-function confirmSubmitEdit() {
-  const nextReq = requestHistory.value.length + 1
-  const reqId = `REQ-PRF-${String(nextReq).padStart(3, '0')}`
-  const nextAudit = auditLogs.value.length + 1
-  const auditId = `AUD-${String(nextAudit).padStart(3, '0')}`
-  const nowDate = new Date()
-  const submittedAt = nowDate.toLocaleDateString('th-TH')
-  const performedAt = `${submittedAt} ${nowDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}`
+async function confirmSubmitEdit() {
+  const session = await ensureTeacherSession()
+  const teacherID = session?.teacher?.id
+  const token = useCookie<string | null>('edu_teacher_token')
+  const config = useRuntimeConfig()
+  if (!teacherID || !token.value) return
 
   const requestPayload = {
     requestType: 'teacher-profile-update',
-    requestId: reqId,
     sections: selectedSections.value,
     sectionLabels: selectedSectionLabels.value,
     requestedChanges: selectedSections.value
@@ -338,24 +491,21 @@ function confirmSubmitEdit() {
     otherSectionDetail: selectedSections.value.includes('other') ? otherSectionDetail.value.trim() : '',
     reason: editForm.value.reason.trim(),
   }
-  // TODO: send requestPayload to API when endpoint is ready.
-  void requestPayload
 
-  requestHistory.value.unshift({
-    id: reqId,
-    sections: selectedSectionLabels.value || '-',
-    reason: editForm.value.reason.trim(),
-    submittedAt,
-    status: 'รออนุมัติ',
+  await $fetch(`${config.public.apiBase}/teachers/${teacherID}/profile-requests`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token.value}`,
+      'Content-Type': 'application/json',
+    },
+    body: {
+      requested_data: requestPayload,
+      reason: editForm.value.reason.trim(),
+      status: 'pending',
+    },
   })
 
-  auditLogs.value.unshift({
-    id: auditId,
-    action: 'ส่งคำขอแก้ไข',
-    target: selectedSectionLabels.value || '-',
-    performedAt,
-    actor: `${profile.value.prefix}${profile.value.firstName} ${profile.value.lastName}`,
-  })
+  await refreshProfileData()
 
   showConfirmModal.value = false
   showEdit.value = false
@@ -367,6 +517,10 @@ function showFeedback(message: string) {
   setTimeout(() => {
     if (feedbackMessage.value === message) feedbackMessage.value = ''
   }, 2200)
+}
+
+if (import.meta.client) {
+  refreshProfileData().catch(() => undefined)
 }
 </script>
 

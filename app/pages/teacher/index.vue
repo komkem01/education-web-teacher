@@ -4,8 +4,8 @@
     <template v-else>
       <div class="page-header">
         <div>
-          <h2 class="page-title">ยินดีต้อนรับ นายสมชาย ใจดี</h2>
-          <p class="page-desc">ครูผู้สอน · โรงเรียนตัวอย่างวิทยา · ปีการศึกษา 2568</p>
+          <h2 class="page-title">ยินดีต้อนรับ {{ headerTeacherName }}</h2>
+          <p class="page-desc">ครูผู้สอน · {{ schoolNameLabel }} · ปีการศึกษา {{ currentAcademicYearLabel }}</p>
         </div>
       </div>
 
@@ -128,6 +128,56 @@ const { records: attendanceRecords } = useAttendanceData()
 const { rows: gradeRows } = useGradesData()
 const { rows: approvalRows } = useApprovalsData()
 const { requests: docRequests } = useDocumentsData()
+const teacherSession = useTeacherSessionState()
+const authToken = useCookie<string | null>('edu_teacher_token')
+const teacherEmail = useCookie<string | null>('edu_teacher_email')
+const currentAcademicYearLabel = ref(String(new Date().getFullYear() + 543))
+
+type BaseResponse<T> = { data: T }
+type AcademicYearRow = { id: string; year: string; is_current: boolean }
+
+function authHeaders() {
+  return authToken.value ? { Authorization: `Bearer ${authToken.value}` } : undefined
+}
+
+async function apiFetch<T>(path: string, options?: Parameters<typeof $fetch<T>>[1]) {
+  const config = useRuntimeConfig()
+  return await $fetch<T>(`${config.public.apiBase}${path}`, options)
+}
+
+function normalizeAcademicYear(raw: string) {
+  const num = Number(raw)
+  if (!Number.isFinite(num)) return raw
+  if (num < 2400) return String(num + 543)
+  return String(num)
+}
+
+if (import.meta.client) {
+  ensureTeacherSession().catch(() => {
+    // Keep fallback header values if session loading fails.
+  })
+
+  if (authHeaders()) {
+    apiFetch<BaseResponse<AcademicYearRow[]>>('/teachers-meta/academic-years?only_active=true', { headers: authHeaders() })
+      .then((res) => {
+        const rows = res.data || []
+        const current = rows.find(item => item.is_current) || rows[0]
+        if (current?.year) currentAcademicYearLabel.value = normalizeAcademicYear(current.year)
+      })
+      .catch(() => {
+        // Keep fallback current Buddhist year.
+      })
+  }
+}
+
+const schoolNameLabel = computed(() => teacherSession.value?.schoolName || 'ยังไม่ระบุโรงเรียน')
+const headerTeacherName = computed(() => {
+  const t = teacherSession.value?.teacher
+  const fullName = `${t?.first_name || ''} ${t?.last_name || ''}`.trim()
+  if (fullName) return fullName
+  if (teacherEmail.value) return teacherEmail.value
+  return 'ครูผู้สอน'
+})
 
 const totalCourses = computed(() => courseRows.value.filter(c => c.status === 'เปิดสอน').length)
 const totalStudents = computed(() => studentRows.value.length)

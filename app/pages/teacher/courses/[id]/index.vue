@@ -158,6 +158,7 @@ import { useCoursesData } from '~/composables/useCoursesData'
 import { useStudentsData } from '~/composables/useStudentsData'
 import { useGradesData } from '~/composables/useGradesData'
 import { useTimetableData } from '~/composables/useTimetableData'
+import { ensureTeacherSession } from '~/composables/useTeacherSession'
 
 definePageMeta({ layout: 'teacher' })
 
@@ -200,7 +201,7 @@ const tabs = [
 ]
 
 const course = computed(() => courses.value.find(c => c.id === route.params.id))
-const courseStudents = computed(() => students.value.filter(s => s.classroom === course.value?.level + '/' + (course.value?.id.slice(-1) ?? '')))
+const courseStudents = computed(() => students.value.filter(s => s.classroom === (course.value?.room || '')))
 const courseGrades = computed(() => grades.value.filter(g => g.courseId === route.params.id))
 const courseTimetable = computed(() => slots.value.filter(t => t.courseId === route.params.id))
 const isEditRequestValid = computed(() => {
@@ -298,9 +299,15 @@ function openEditModal() {
   showEditModal.value = true
 }
 
-function submitEditRequest() {
+async function submitEditRequest() {
   editSubmitAttempted.value = true
   if (!isEditRequestValid.value) return
+
+  const session = await ensureTeacherSession()
+  const teacherID = session?.teacher?.id
+  const token = useCookie<string | null>('edu_teacher_token')
+  const config = useRuntimeConfig()
+  if (!teacherID || !token.value) return
 
   const requestPayload = {
     requestType: 'course-update',
@@ -316,8 +323,19 @@ function submitEditRequest() {
       }, {} as Record<string, string>),
     otherDetail: editTargets.value.includes('other') ? editOtherDetail.value.trim() : '',
   }
-  // TODO: send requestPayload to API when endpoint is ready.
-  void requestPayload
+
+  await $fetch(`${config.public.apiBase}/teachers/${teacherID}/profile-requests`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token.value}`,
+      'Content-Type': 'application/json',
+    },
+    body: {
+      requested_data: requestPayload,
+      reason: editReason.value.trim(),
+      status: 'pending',
+    },
+  })
 
   showEditModal.value = false
   editReason.value = ''
